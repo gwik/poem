@@ -250,8 +250,6 @@ fn generate_operation(
     let mut params_meta = Vec::new();
     let mut security = Vec::new();
 
-    let mut path_param_count = 0;
-
     for i in 1..item_method.sig.inputs.len() {
         let arg = &mut item_method.sig.inputs[i];
         let (arg_ident, mut arg_ty, operation_param, param_description) = match arg {
@@ -283,12 +281,6 @@ fn generate_operation(
                 return Err(Error::new_spanned(item_method, "Invalid method definition.").into());
             }
         };
-        let is_path = match &*arg_ty {
-            syn::Type::Path(syn::TypePath { qself: _, path }) => {
-                path.segments.iter().any(|v| v.ident == "Path")
-            }
-            _ => false,
-        };
 
         RemoveLifetime.visit_type_mut(&mut arg_ty);
 
@@ -302,13 +294,6 @@ fn generate_operation(
             .or(ignore_case)
             .or(api_args.ignore_case)
             .unwrap_or(false);
-        let extract_param_name = is_path
-            .then(|| {
-                let n = format!("param{path_param_count}");
-                path_param_count += 1;
-                n
-            })
-            .unwrap_or_else(|| param_name.clone());
         use_args.push(pname.clone());
 
         if !hidden {
@@ -385,7 +370,7 @@ fn generate_operation(
 
         parse_args.push(quote! {
             let mut param_opts = #crate_name::ExtractParamOptions {
-                name: #extract_param_name,
+                name: #param_name,
                 ignore_case: #ignore_case,
                 default_value: #default_value,
                 example_value: #example_value,
